@@ -19,7 +19,7 @@ module.exports = {
             if(i >= connection.queue.length) break;
             str += `${i+1}) ${connection.queue[i]} \n`
         }
-
-        await interaction.reply(str);
+        
+        await interaction.reply(str ? str : "The queue is empty");
 	},
 };

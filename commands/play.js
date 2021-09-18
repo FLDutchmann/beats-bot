@@ -2,6 +2,7 @@ const { join } = require('path');
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { joinVoiceChannel, getVoiceConnection, createAudioPlayer, NoSubscriberBehavior, createAudioResource, VoiceConnectionStatus, AudioPlayerStatus  } = require('@discordjs/voice');
 const ytdl = require('ytdl-core');
+const ytsr = require('ytsr');
 
 function playQueued(guildId) {
 	const connection = getVoiceConnection(guildId);
@@ -20,7 +21,7 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('play')
 		.setDescription('Play a song!')
-		.addStringOption(option => option.setName('url').setDescription('The youtube URL for your song.').setRequired(true)),
+		.addStringOption(option => option.setName('name').setDescription('Name or url of the song to play from youtube').setRequired(true)),
 	async execute(interaction) {
 		const channel = interaction.member.voice.channel;
 
@@ -76,19 +77,31 @@ module.exports = {
 			});
 			connection.player = player;
 			
+			connection.subscribe(player);
 		}
 		const player = connection.player;
-
-		const subscription = connection.subscribe(player);
 		
-		const url = interaction.options.getString(`url`);
+		const name = interaction.options.getString(`name`);
+		let url = "";
+		await interaction.deferReply();
+		if(!name.includes('youtube.com/')) {
+			//Search Youtube for song
+			const response = await ytsr(name);
+			url = response['items'].filter((item) => item.type == 'video')[0].url;
+			console.log(url);
+
+		} else {
+			//Assume the name is a url
+			url = name;
+		}
+
 		connection.queue.push(url);
 
 		if(player.state.status == AudioPlayerStatus.Idle) {
 			await playQueued(channel.guild.id);
-			await interaction.reply(`🎵 Playing ${url} 🎵`);
+			await interaction.editReply(`🎵 Playing ${url} 🎵`);
 		} else {
-			await interaction.reply(`Added ${url} to the queue`);
+			await interaction.editReply(`Added ${url} to the queue`);
 		}
 	},
 };
